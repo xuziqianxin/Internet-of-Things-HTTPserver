@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html;charset=GBK">
+    
+    <title>物联网监测平台</title>
+    <script>
+        function button(btn) {
+            var deviceList = document.getElementById("deviceList");
+            var Monitoring_station = document.getElementById("Monitoring_station");
+            var Console = document.getElementById("Console");
+            var illustrate = document.getElementById("illustrate");
+
+            switch (btn) {
+                case button_0: deviceList.style.zIndex = 4; Monitoring_station.style.zIndex = 3; Console.style.zIndex = 2; illustrate.style.zIndex = 1; break;
+                case button_1: Monitoring_station.style.zIndex = 4; deviceList.style.zIndex = 3; Console.style.zIndex = 2; illustrate.style.zIndex = 1; break;
+                case button_2: Console.style.zIndex = 4; deviceList.style.zIndex = 3; Monitoring_station.style.zIndex = 2; illustrate.style.zIndex = 1; break;
+                case button_3: illustrate.style.zIndex = 4; deviceList.style.zIndex = 3; Console.style.zIndex = 2; Monitoring_station.style.zIndex = 1; break;
+            }
+        }
+
+        function plus(cardName) {
+            switch (cardName) {
+                case 1:
+                    {
+                        var initialValue = document.getElementById("P_temperature_value");
+                        var pValue = document.getElementById("P_temperature_value");
+                        var temp = initialValue.innerHTML;
+                        temp = temp.slice(0, (temp.length - 1));
+                        temp = Number(temp);
+                        pValue.innerHTML = (temp + 1) + "&#8451";
+                        break;
+                    }
+                case 2:
+                    {
+                        var initialValue = document.getElementById("P_humidity_value");
+                        var pValue = document.getElementById("P_humidity_value");
+                        var temp = initialValue.innerHTML;
+                        temp = temp.slice(0, (temp.length - 1));
+                        temp = Number(temp);
+                        pValue.innerHTML = (temp + 1) + "%";
+                        break;
+                    }
+                case 3:
+                    {
+                        var initialValue = document.getElementById("P_PH_value");
+                        var pValue = document.getElementById("P_PH_value");
+                        var temp = initialValue.innerHTML;
+                        temp = Number(temp);
+                        pValue.innerHTML = temp + 1;
+                        break;
+                    }
+            }
+
+        }
+
+        function sub(cardName) {
+            switch (cardName) {
+                case 1:
+                    {
+                        var initialValue = document.getElementById("P_temperature_value");
+                        var pValue = document.getElementById("P_temperature_value");
+                        var temp = initialValue.innerHTML;
+                        temp = temp.slice(0, (temp.length - 1));
+                        temp = Number(temp);
+                        pValue.innerHTML = (temp - 1) + "&#8451";
+                        break;
+                    }
+                case 2:
+                    {
+                        var initialValue = document.getElementById("P_humidity_value");
+                        var pValue = document.getElementById("P_humidity_value");
+                        var temp = initialValue.innerHTML;
+                        temp = temp.slice(0, (temp.length - 1));
+                        temp = Number(temp);
+                        if (temp > 0) {
+                            pValue.innerHTML = (temp - 1) + "%";
+                        }
+                        else {
+                            alert("无法为负数");
+                        }
+                        break;
+                    }
+                case 3:
+                    {
+                        var initialValue = document.getElementById("P_PH_value");
+                        var pValue = document.getElementById("P_PH_value");
+                        var temp = initialValue.innerHTML;
+                        temp = Number(temp);
+                        if (temp > 0) {
+                            pValue.innerHTML = temp - 1;
+                        }
+                        else {
+                            alert("无法为负数");
+                        }
+                        break;
+                    }
+            }
+        }
+        function submit(cardName) {
+            switch (cardName) {
+                case 1:
+                    {
+                        var outValue = document.getElementById("P_temperature_value");
+                        var pValue = document.getElementById("temperature_input").value;
+                        pValue = Number(pValue);
+                        if (pValue != pValue) {
+                            alert("错误！请不要输入中文字符");
+                            pValue = 0;
+                        }
+                        outValue.innerHTML = pValue + "&#8451";
+                        break;
+                    }
+                case 2:
+                    {
+                        var outValue = document.getElementById("P_humidity_value");
+                        var pValue = document.getElementById("humidity_input").value;
+                        pValue = Number(pValue);
+                        if (pValue != pValue) {
+                            alert("错误！请不要输入中文字符");
+                            pValue = 0;
+                        }
+                        outValue.innerHTML = pValue + "%";
+                        break;
+                    }
+                case 3:
+                    {
+                        var outValue = document.getElementById("P_PH_value");
+                        var pValue = document.getElementById("PH_input").value;
+                        pValue = Number(pValue);
+                        if (pValue != pValue) {
+                            alert("错误！请不要输入中文字符");
+                            pValue = 0;
+                        }
+                        outValue.innerHTML = pValue;
+                        break;
+                    }
+            }
+        }
+        function deviceChose(deviceNum) {
+            var output = document.getElementById(deviceNum).innerText;
+            var Console_header = document.getElementById("Console_header");
+            var Monitoring_station_header = document.getElementById("Monitoring_station_header");
+            Console_header.innerHTML = output;
+            Monitoring_station_header.innerHTML = output;
+        }
+    </script>
+    <style>
+        .body {
+            width: 100%;
+            height: 100%;
+            background-color: #323232;
+        }
+
+        .header {
+            width: 1440px;
+            height: 80px;
+            border-style: solid;
+            border-width: thin;
+            border-color: black;
+            background-color: #fff;
+            border-radius: 6px;
+            text-align: center;
+            position: fixed;
+            margin-left: 10px;
+            margin-right: 10px;
+            z-index: 10;
+        }
+
+        .main_background {
+            overflow: auto;
+            width: 1150px;
+            height: 85%;
+            text-align: center;
+            border-style: solid;
+            border-radius: 6px;
+            border-color: black;
+            background-color: #fff;
+            border-width: thin;
+            position: absolute;
+            margin-top: 100px;
+            margin-left: 300px;
+            z-index: 4;
+        }
+
+        .meun {
+            overflow: auto;
+            width: 200px;
+            height: 85%;
+            align-items: center;
+            border-style: solid;
+            border-width: thin;
+            border-radius: 6px;
+            border-color: black;
+            background-color: #fff;
+            position: fixed;
+            margin-top: 100px;
+            margin-left: 10px;
+            z-index: 10;
+        }
+
+        .button {
+            width: 100px;
+            height: 40px;
+            margin-top: 20px;
+            margin-left: 0;
+            background-color: #fff;
+            border-color: antiquewhite;
+            border-radius: 8px;
+        }
+
+            .button:hover {
+                background-color: whitesmoke;
+            }
+
+        .card_button {
+            background-color: #fff;
+            border-style: solid;
+            border-color: antiquewhite;
+            border-radius: 8px;
+        }
+
+            .card_button:hover {
+                background-color: whitesmoke;
+            }
+
+            .card_button:active {
+                border-color: wheat;
+            }
+
+        .Monitoring_station {
+            display: block;
+            align-items: center;
+            text-align: center;
+        }
+
+        .li {
+            display: inline-block;
+            width: 240px;
+            height: 300px;
+            border-style: solid;
+            border-radius: 6px;
+            border-width: thin;
+            border-color: bisque;
+            margin-top: 30px;
+            margin-left: 40px;
+            margin-right: 40px;
+            padding-top: 20px;
+            text-align: center;
+            background-color: whitesmoke;
+        }
+
+            .li:hover {
+                display: inline-block;
+                width: 240px;
+                height: 300px;
+                border-style: solid;
+                border-radius: 6px;
+                border-width: thin;
+                border-color: bisque;
+                margin-top: 30px;
+                margin-left: 40px;
+                margin-right: 40px;
+                padding-top: 20px;
+                text-align: center;
+                box-shadow: 10px 10px 5px bisque;
+                background-color: white;
+            }
+
+        .Console {
+            display: block;
+            align-items: center;
+            text-align: center;
+        }
+
+        hr {
+            width: 70%;
+        }
+    </style>
+</head>
+<body class="body">
+    <div>
+        <header class="header">
+            <h1>物联网监测平台</h1>
+        </header>
+
+        <aside id="meun" class="meun">
+            <div id="button_list">
+                <ul style="list-style-type: none;">
+                    <il><button id="button_0" onclick="button(button_0)" class="button">设备表</button></il>
+                    <li><button id="button_1" onclick="button(button_1)" class="button">监测表</button></li>
+                    <li><button id="button_2" onclick="button(button_2)" class="button">控制台</button></li>
+                    <li><button id="button_3" onclick="button(button_3)" class="button">说明书</button></li>
+                </ul>
+            </div>
+        </aside>
+
+        <div id="deviceList" class="main_background">
+            <header><h1>设备列表</h1></header>
+            <article>
+                <table align="center" valign="middle">
+                    <tr>
+                        <td><button id="device_1" class="button" value="设备1" onclick="deviceChose(this.id)">设备1</button></td>
+                        <td><button id="device_2" class="button" value="设备2" onclick="deviceChose(this.id)">设备2</button></td>
+                        <td><button id="device_3" class="button" value="设备3" onclick="deviceChose(this.id)">设备3</button></td>
+                    </tr>
+                </table>
+            </article>
+
+        </div>
+
+        <div id="Monitoring_station" class="main_background" style="z-index: 3;">
+            <header><h1 id="Monitoring_station_header" style="margin-top: 30px;">全局</h1></header>
+            <article id="article_1" class="Monitoring_station">
+                <ul style="list-style-type: none; margin-top: 30px;">
+                    <li id="Monitoring_station_temperature" class="li">
+                        <div id="MS_temperature_card">
+                            <header><p><strong>温度</strong></p></header>
+                            <hr>
+                            <article><p id="MS_temperature_value">00.0&#8451</p></article>
+                        </div>
+                    </li>
+                    <li id="Monitoring_station_humidity" class="li">
+                        <div id="MS_humidity_card">
+                            <header><p><strong>湿度</strong></p></header>
+                            <hr>
+                            <article><p id="MS_humidity_value">00.0%</p></article>
+                        </div>
+                    </li>
+                    <li id="Monitoring_station_ph" class="li">
+                        <div id="MS_PH_card">
+                            <header><p><strong>土壤PH值</strong></p></header>
+                            <hr>
+                            <article><p id="MS_PH_value">0</p></article>
+                        </div>
+                    </li>
+                </ul>
+            </article>
+        </div>
+
+        <div id="Console" class="main_background" style="z-index: 2;">
+            <header><h1 id="Console_header" style="margin-top: 30px;">全局</h1></header>
+            <article id="article_2" class="Console">
+                <ul style="list-style-type: none; margin-top: 30px;">
+                    <li id="Console_temperature" class="li">
+                        <div id="Console_temperature_card">
+                            <header><p><strong>温度调节</strong></p></header>
+                            <hr>
+                            <article>
+                                <p id="Console_temperature_value">00.0&#8451</p>
+                                <hr>
+                                <p><strong>预设值</strong></p>
+                                <p id="P_temperature_value" style="margin-bottom: 2px;">1&#8451</p>
+                                <hr style="width: 20%;margin-top: 2px;margin-bottom: 30px;">
+                                <button class="card_button" onclick="plus(1)">+</button>
+                                <button class="card_button" onclick="sub(1)">-</button>
+                                <input id="temperature_input" type="text" style="width: 30px;">
+                                <button class="card_button" onclick="submit(1)">确认</button>
+                            </article>
+                        </div>
+                    </li>
+                    <li id="Console_humidity" class="li">
+                        <div id="Console_humidity_card">
+                            <header><p><strong>湿度调节</strong></p></header>
+                            <hr>
+                            <article>
+                                <p id="Console_humidity_value">00.0%</p>
+                                <hr>
+                                <p><strong>预设值</strong></p>
+                                <p id="P_humidity_value" style="margin-bottom: 2px;">00.0%</p>
+                                <hr style="width: 20%;margin-top: 2px;margin-bottom: 30px;">
+                                <button class="card_button" onclick="plus(2)">+</button>
+                                <button class="card_button" onclick="sub(2)">-</button>
+                                <input id="humidity_input" type="text" style="width: 30px;">
+                                <button class="card_button" onclick="submit(2)">确认</button>
+                            </article>
+                        </div>
+                    </li>
+                    <li id="Console_PH" class="li">
+                        <div id="Console_PH_card">
+                            <header><p><strong>土壤PH值调节</strong></p></header>
+                            <hr>
+                            <article>
+                                <p id="Console_PH_value">0</p>
+                                <hr>
+                                <p><strong>预设值</strong></p>
+                                <p id="P_PH_value" style="margin-bottom: 2px;">0</p>
+                                <hr style="width: 20%;margin-top: 2px;margin-bottom: 30px;">
+                                <button class="card_button" onclick="plus(3)">+</button>
+                                <button class="card_button" onclick="sub(3)">-</button>
+                                <input id="PH_input" type="text" style="width: 30px;">
+                                <button class="card_button" onclick="submit(3)">确认</button>
+                            </article>
+                        </div>
+                    </li>
+                </ul>
+            </article>
+        </div>
+
+        <div id="illustrate" class="main_background" style="text-align: center; z-index: 1;">
+            <article>
+                <p>在设备列表里选择设备，即可看到你选择的设备运转状况。不选择默认全局。监测台可以看设备运转状况，控制台可以设置设备运转参数。</p>
+            </article>
+        </div>
+    </div>
+</body>
+</html>
