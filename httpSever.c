@@ -7,15 +7,40 @@
 #pragma warning (disable : 4996)
 #pragma comment (lib, "ws2_32.lib")
 
-#define MSG_BUFF	1024
-#define BUFF_SIZE	2048
-#define BUFF_SMALL	100
+#define		MSG_BUFF					1024
+#define		BUFF_SIZE					2048
+#define		BUFF_SMALL					100
+#define		DEVICE_NUM					100
+#define		MAX_THREAD_NUM				100
+#define		DEVICE_ATTRIBUTE_LENGTH		10
 
 void StatesCodeInit(int* nRes, int* errorCode);
 unsigned WINAPI RequestHandler(void* arg);
 char* ContentType(char* file);
 void SendData(SOCKET sock, char* ct, char* filename);
+void SendDeviceData(SOCKET sock);
 void SendErrorMSG(SOCKET sock);
+void DeviceMsgProcess(char* msg);
+void ThreadMonitor(void* arg);
+
+typedef struct
+{
+	int		deviceNum;
+	_Bool	states;
+	_Bool	isWrite;
+	float	temperature;
+	float	humidity;
+	float	PH;
+}DEVICE;
+
+typedef struct
+{
+	HANDLE hThread;
+	DWORD hThreadID;
+	_Bool threadSates;
+}THREAD;
+
+DEVICE	device[DEVICE_NUM];
 
 int main(int agrc, char* agrv[])
 {
@@ -26,12 +51,15 @@ int main(int agrc, char* agrv[])
 	char			txBuff[MSG_BUFF] =	 { 0 };
 	int				nRes			 =	 0;
 	int				errorCode		 =	 0;
+	int				THREAD_NUM		 =	 1;
 	WSADATA			WSADATA;
 	SOCKET			serverSocket, clientSocket;
 	SOCKADDR_IN		serverAddr, clientAddr;
-	HANDLE			hThread;
-	DWORD			hThreadID;
+	THREAD			threadPool[MAX_THREAD_NUM];
 	int				clientSize;
+
+	memset(device, 0, sizeof(device));
+	memset(threadPool, 0, sizeof(threadPool));
 
 	nRes = WSAStartup(word, &WSADATA);
 	if (nRes != 0)
@@ -83,18 +111,32 @@ int main(int agrc, char* agrv[])
 	printf("listen() state code: %d\n", nRes);
 	StatesCodeInit(&nRes, &errorCode);
 
+	threadPool[0].hThread = (HANDLE)_beginthreadex(NULL, 0, ThreadMonitor, (void*)threadPool, 0, (unsigned*)&threadPool[0].hThreadID);
+
 	while (1)
 	{
 		clientSize = sizeof(clientAddr);
 		clientSocket = accept(serverSocket, (SOCKADDR*)&clientAddr, &clientSize);
 		printf("Connection Request : %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-		hThread = (HANDLE)_beginthreadex(NULL, 0, RequestHandler, (void*)clientSocket, 0, (unsigned*)&hThreadID);
-
+		if (threadPool[THREAD_NUM].threadSates == 0)
+		{
+			threadPool[THREAD_NUM].hThread = (HANDLE)_beginthreadex(NULL, 0, RequestHandler, (void*)clientSocket, 0, (unsigned*)&threadPool[THREAD_NUM].hThreadID);
+			if (threadPool[THREAD_NUM].hThread != NULL)
+			{
+				threadPool[THREAD_NUM].threadSates = 1;
+				THREAD_NUM++;
+				if (THREAD_NUM == (MAX_THREAD_NUM-1))
+					THREAD_NUM = 1;
+			}
+			else
+			{
+				continue;
+			}
+		}
 	}
 	closesocket(serverSocket);
 	WSACleanup();
 	return 0;
-
 }
 
 void StatesCodeInit(int* nRes, int* errorCode)
@@ -110,6 +152,7 @@ unsigned WINAPI RequestHandler(void* arg)
 	char	method[BUFF_SMALL];
 	char	ct[BUFF_SMALL];
 	char	filename[BUFF_SMALL];
+	char	deviceMsg[BUFF_SMALL];
 
 	recv(clientSock, buf, BUFF_SIZE, 0);
 	if (strstr(buf, "HTTP/") == NULL)
@@ -119,14 +162,50 @@ unsigned WINAPI RequestHandler(void* arg)
 		return 1;
 	}
 	strcpy(method, strtok(buf, " /"));
-	if (strcmp(method, "GET"))
+	if (!(strcmp(method, "GET")))
+	{
+		strcpy(filename, strtok(NULL, " /"));
+		if (!(strcmp(filename, "GET_EDVICE_DATA")))
+		{
+			
+			SendDeviceData(clientSock);
+			return 0;
+		}
+		else
+		{
+			strcpy(ct, ContentType(filename));
+			SendData(clientSock, ct, filename);
+			return 0;
+		}
+	}
+
+	else if (!(strcmp(method, "POST")))
+	{
+		strcpy(filename, strtok(NULL, " /"));
+		if (!(strcmp(filename, "GET_EDVICE_DATA")))
+		{
+			SendDeviceData(clientSock);
+			return 0;
+		}
+		else
+		{
+			strcpy(ct, ContentType(filename));
+			SendData(clientSock, ct, filename);
+			return 0;
+		}
+	}
+
+	else if (!(strcmp(method, "DEVICEMSG")))
+	{
+		strcpy(deviceMsg, strtok(NULL, " /"));
+		DeviceMsgProcess(deviceMsg);
+		return 0;
+	}
+	else
 	{
 		SendErrorMSG(clientSock);
 	}
 
-	strcpy(filename, strtok(NULL, " /"));
-	strcpy(ct, ContentType(filename));
-	SendData(clientSock, ct, filename);
 	return 0;
 }
 
@@ -149,10 +228,8 @@ char* ContentType(char* file)
 
 void SendData(SOCKET sock, char* ct, char* filename)
 {
-	long size = 0;
 	char	protocol[]		=	"HTTP/1.0 200 OK\r\n";
 	char	serverName[]	=	"Server:simple web server\r\n";
-	char	cntLen[]		=	"Content-length:20480\r\n";
 	char	teChunk[]		=	"Transfer-Encoding: chunked\r\n";
 	char	endSign[]		=	"\r\n\r\n";
 	char	cntType[BUFF_SMALL];
@@ -176,6 +253,7 @@ void SendData(SOCKET sock, char* ct, char* filename)
 		send(sock, buf, strlen(buf), 0);
 	}
 	send(sock, endSign, strlen(endSign), 0);
+	fclose(sendFile);
 	closesocket(sock);
 }
 
@@ -190,12 +268,79 @@ void SendErrorMSG(SOCKET sock)
 								"</font></body></html>";
 	char	endSign[]		=	"\r\n\r\n";
 
+	send(sock, protocol,	strlen(protocol),	0);
+	send(sock, serverName,	strlen(serverName), 0);
+	send(sock, teChunk,		strlen(teChunk),	0);
+	send(sock, cntType,		strlen(cntType),	0);
+	send(sock, content,		strlen(content),	0);
+	send(sock, endSign,		strlen(endSign),	0);
+
+	closesocket(sock);
+}
+
+void SendDeviceData(SOCKET sock)
+{
+	char	protocol[] = "HTTP/1.0 200 OK\r\n";
+	char	serverName[] = "Server:simple web server\r\n";
+	char	teChunk[] = "Transfer-Encoding: chunked\r\n";
+	char	endSign[] = "\r\n\r\n";
+	char	buf[BUFF_SIZE];
+
 	send(sock, protocol, strlen(protocol), 0);
 	send(sock, serverName, strlen(serverName), 0);
 	send(sock, teChunk, strlen(teChunk), 0);
-	send(sock, cntType, strlen(cntType), 0);
-	send(sock, content, strlen(content), 0);
-	send(sock, endSign, strlen(endSign), 0);
 
-	closesocket(sock);
+	for (int i = 0; i < DEVICE_NUM; i++)
+	{
+		if (device[i].isWrite == TRUE)
+		{
+			sprintf(buf, "%d&%d&%f&%f&%f#", device[i].deviceNum, device[i].states, device[i].temperature, device[i].humidity, device[i].PH);
+			send(sock, buf, strlen(buf), 0);
+		}
+		else
+		{
+			continue;
+		}
+	}
+	send(sock, endSign, strlen(endSign), 0);
+}
+
+void DeviceMsgProcess(char* msg)
+{
+	int		num;
+	char	deviceNum[DEVICE_ATTRIBUTE_LENGTH];
+	char	states[DEVICE_ATTRIBUTE_LENGTH];
+	char	temperature[DEVICE_ATTRIBUTE_LENGTH];
+	char	humidity[DEVICE_ATTRIBUTE_LENGTH];
+	char	PH[DEVICE_ATTRIBUTE_LENGTH];
+
+	strcpy(deviceNum, strtok(msg, "&"));
+	strcpy(states, strtok(NULL, "&"));
+	strcpy(temperature, strtok(NULL, "&"));
+	strcpy(humidity, strtok(NULL, "&"));
+	strcpy(PH, strtok(NULL, "&"));
+
+	num = atoi(deviceNum);
+	device[num].deviceNum = num;
+	device[num].states = (_Bool)atoi(states);
+	device[num].temperature = atof(temperature);
+	device[num].humidity = atof(humidity);
+	device[num].PH = atof(PH);
+	device[num].isWrite = 1;
+}
+
+void ThreadMonitor(void* arg)
+{
+	THREAD* threadPool = (THREAD*)arg;
+	threadPool[0].threadSates = 1;
+	while (1)
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			if ((WaitForSingleObject(threadPool[i].hThread, 100) == WAIT_OBJECT_0)&&(threadPool[i].threadSates == 1))
+			{
+				threadPool[i].threadSates = 0;
+			}
+		}
+	}
 }
