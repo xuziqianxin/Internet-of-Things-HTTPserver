@@ -7,6 +7,34 @@
     
     <title>物联网监测平台</title>
     <script>
+        var HttpRequest;
+        setInterval(msgGet, 2000);
+        function msgGet() {
+            if (window.XMLHttpRequest)
+            {
+                HttpRequest = new XMLHttpRequest();
+            }
+            else
+            {
+                HttpRequest = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            HttpRequest.onreadystatechange = process;
+            HttpRequest.open('GET', "http://127.0.0.1:8080/GET_EDVICE_DATA", true);
+            HttpRequest.responseType = "text";
+            HttpRequest.ontimeout = function (e) { console.log('ontimeout') };
+            HttpRequest.onerror = function (e) { console.log('onerror') };
+            HttpRequest.timeout = 1000;
+            HttpRequest.send(null);
+        }
+        function process()
+        {
+            if ((HttpRequest.readyState == 4) && (HttpRequest.status == 200))
+            {
+                var string = HttpRequest.responseText;
+                console.log(string);
+            }
+        }
+
         function button(btn) {
             var deviceList = document.getElementById("deviceList");
             var Monitoring_station = document.getElementById("Monitoring_station");
@@ -283,7 +311,7 @@
 <body class="body">
     <div>
         <header class="header">
-            <h1>物联网监测平台</h1>
+            <h1 id="h1text">物联网监测平台</h1>
         </header>
 
         <aside id="meun" class="meun">

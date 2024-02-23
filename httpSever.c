@@ -3,7 +3,7 @@
 #include <WinSock2.h>
 #include <string.h>
 #include <process.h>
-
+#include <time.h>
 #pragma warning (disable : 4996)
 #pragma comment (lib, "ws2_32.lib")
 
@@ -61,6 +61,13 @@ int main(int agrc, char* agrv[])
 	memset(device, 0, sizeof(device));
 	memset(threadPool, 0, sizeof(threadPool));
 
+	device[1].isWrite = 1;
+	device[1].deviceNum = 2;
+	device[1].temperature = 22.3;
+	device[1].humidity = 19;
+	device[1].PH = 7;
+	device[1].states = 1;
+
 	nRes = WSAStartup(word, &WSADATA);
 	if (nRes != 0)
 	{
@@ -112,11 +119,22 @@ int main(int agrc, char* agrv[])
 	StatesCodeInit(&nRes, &errorCode);
 
 	threadPool[0].hThread = (HANDLE)_beginthreadex(NULL, 0, ThreadMonitor, (void*)threadPool, 0, (unsigned*)&threadPool[0].hThreadID);
-
+	
+	time_t now_time;
+	
 	while (1)
 	{
+		clock_t start;
+		clock_t finsh;
+		double  time1;
 		clientSize = sizeof(clientAddr);
+		printf("准备接受\n");
+		start = clock();
 		clientSocket = accept(serverSocket, (SOCKADDR*)&clientAddr, &clientSize);
+		finsh = clock();
+		time1 = (double)(finsh - start) / CLOCKS_PER_SEC;
+		time(&now_time);
+		printf("接受完毕 用时：%f\n 当前时间:%s\n", time1, ctime(&now_time));
 		printf("Connection Request : %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 		if (threadPool[THREAD_NUM].threadSates == 0)
 		{
@@ -125,12 +143,8 @@ int main(int agrc, char* agrv[])
 			{
 				threadPool[THREAD_NUM].threadSates = 1;
 				THREAD_NUM++;
-				if (THREAD_NUM == (MAX_THREAD_NUM-1))
+				if (THREAD_NUM == (MAX_THREAD_NUM - 1))
 					THREAD_NUM = 1;
-			}
-			else
-			{
-				continue;
 			}
 		}
 	}
@@ -154,6 +168,8 @@ unsigned WINAPI RequestHandler(void* arg)
 	char	filename[BUFF_SMALL];
 	char	deviceMsg[BUFF_SMALL];
 
+	time_t now_time;
+
 	recv(clientSock, buf, BUFF_SIZE, 0);
 	if (strstr(buf, "HTTP/") == NULL)
 	{
@@ -161,20 +177,27 @@ unsigned WINAPI RequestHandler(void* arg)
 		closesocket(clientSock);
 		return 1;
 	}
+
+	time(&now_time);
+	printf("报文接受完毕时间:%s\n", ctime(&now_time));
+
 	strcpy(method, strtok(buf, " /"));
 	if (!(strcmp(method, "GET")))
 	{
 		strcpy(filename, strtok(NULL, " /"));
 		if (!(strcmp(filename, "GET_EDVICE_DATA")))
 		{
-			
 			SendDeviceData(clientSock);
+			time(&now_time);
+			printf("请求处理完毕时间:%s\n", ctime(&now_time));
 			return 0;
 		}
 		else
 		{
 			strcpy(ct, ContentType(filename));
 			SendData(clientSock, ct, filename);
+			time(&now_time);
+			printf("请求处理完毕时间:%s\n", ctime(&now_time));
 			return 0;
 		}
 	}
@@ -205,7 +228,6 @@ unsigned WINAPI RequestHandler(void* arg)
 	{
 		SendErrorMSG(clientSock);
 	}
-
 	return 0;
 }
 
@@ -231,7 +253,7 @@ void SendData(SOCKET sock, char* ct, char* filename)
 	char	protocol[]		=	"HTTP/1.0 200 OK\r\n";
 	char	serverName[]	=	"Server:simple web server\r\n";
 	char	teChunk[]		=	"Transfer-Encoding: chunked\r\n";
-	char	endSign[]		=	"\r\n\r\n";
+	char	endSign[]		=	"0\r\n\r\n";
 	char	cntType[BUFF_SMALL];
 	char	buf[BUFF_SIZE];
 	FILE*	sendFile;
@@ -259,7 +281,7 @@ void SendData(SOCKET sock, char* ct, char* filename)
 
 void SendErrorMSG(SOCKET sock)
 {
-	char	protocol[]		=	"HTTP/1.0 200 OK\r\n";
+	char	protocol[]		=	"HTTP/1.1 200 OK\r\n";
 	char	serverName[]	=	"Server:simple web server\r\n";
 	char	teChunk[]		=	"Transfer-Encoding: chunked\r\n";
 	char	cntType[]		=	"Content-type:text/html\r\n\r\n";
@@ -280,21 +302,35 @@ void SendErrorMSG(SOCKET sock)
 
 void SendDeviceData(SOCKET sock)
 {
-	char	protocol[] = "HTTP/1.0 200 OK\r\n";
+	char	protocol[] = "HTTP/1.1 200 OK\r\n";
 	char	serverName[] = "Server:simple web server\r\n";
 	char	teChunk[] = "Transfer-Encoding: chunked\r\n";
-	char	endSign[] = "\r\n\r\n";
+	char    allowMethods[] = "Access-Control-Allow-Methods:GET, POST\r\n";
+	char	allowOrigin[] = "Access-Control-Allow-Origin:*\r\n";
+	char	allowHeaders[] = "Access-Control-Allow-Headers: Content-Type,Transfer-Encoding\r\n";
+	char	allowCredentials[] = "Access-Control-Allow-Credentials: true\r\n";
+	char	cntType[] = "Content-type:text/plain; charset=utf-8\r\n\r\n";
+	char	endSign[] = "0\r\n"
+						"\r\n";
 	char	buf[BUFF_SIZE];
+	char	buflength[BUFF_SMALL];
 
 	send(sock, protocol, strlen(protocol), 0);
 	send(sock, serverName, strlen(serverName), 0);
 	send(sock, teChunk, strlen(teChunk), 0);
+	send(sock, allowOrigin, strlen(allowOrigin), 0);
+	send(sock, allowMethods, strlen(allowMethods), 0);
+	send(sock, allowHeaders, strlen(allowHeaders), 0);
+	send(sock, allowCredentials, strlen(allowCredentials), 0);
+	send(sock, cntType, strlen(cntType), 0);
 
 	for (int i = 0; i < DEVICE_NUM; i++)
 	{
 		if (device[i].isWrite == TRUE)
 		{
-			sprintf(buf, "%d&%d&%f&%f&%f#", device[i].deviceNum, device[i].states, device[i].temperature, device[i].humidity, device[i].PH);
+			sprintf(buf, "%d&%d&%f&%f&%f\r\n", device[i].deviceNum, device[i].states, device[i].temperature, device[i].humidity, device[i].PH);
+			sprintf(buflength, "%x\r\n", (strlen(buf)-2));
+			send(sock, buflength, strlen(buflength), 0);
 			send(sock, buf, strlen(buf), 0);
 		}
 		else
@@ -303,6 +339,7 @@ void SendDeviceData(SOCKET sock)
 		}
 	}
 	send(sock, endSign, strlen(endSign), 0);
+	closesocket(sock);
 }
 
 void DeviceMsgProcess(char* msg)
@@ -335,7 +372,7 @@ void ThreadMonitor(void* arg)
 	threadPool[0].threadSates = 1;
 	while (1)
 	{
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < MAX_THREAD_NUM; i++)
 		{
 			if ((WaitForSingleObject(threadPool[i].hThread, 100) == WAIT_OBJECT_0)&&(threadPool[i].threadSates == 1))
 			{
