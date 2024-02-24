@@ -7,6 +7,9 @@
     
     <title>物联网监测平台</title>
     <script>
+        var _deviceChose_ = 0;
+        var deviceList = new Array().fill(0);
+        var deviceBlank = ["0", "0", "0", "0", "0", "0", "0", "0"];
         var HttpRequest;
         setInterval(msgGet, 2000);
         function msgGet() {
@@ -19,7 +22,7 @@
                 HttpRequest = new ActiveXObject("Microsoft.XMLHTTP");
             }
             HttpRequest.onreadystatechange = process;
-            HttpRequest.open('GET', "http://127.0.0.1:8080/GET_EDVICE_DATA", true);
+            HttpRequest.open('GET', "http://127.0.0.1:8080/GET_DEVICE_DATA", true);
             HttpRequest.responseType = "text";
             HttpRequest.ontimeout = function (e) { console.log('ontimeout') };
             HttpRequest.onerror = function (e) { console.log('onerror') };
@@ -31,7 +34,54 @@
             if ((HttpRequest.readyState == 4) && (HttpRequest.status == 200))
             {
                 var string = HttpRequest.responseText;
-                console.log(string);
+                var deviceMsg = string.split("#");
+                for (var i = 0; i < deviceMsg.length; i++)
+                {
+                    var device = deviceMsg[i].split("&");
+                    console.log("device", device);
+                    deviceList[Number(device[0])] = device;
+                    for (var j = 0; j < deviceList.length; j++)
+                    {
+                        if (deviceList[j] == 0)
+                        {
+                            deviceList[j] = deviceBlank;
+                        }
+                    }
+                    console.log("deviceList:",deviceList);
+                }
+            }
+            setMsg(_deviceChose_);
+        }
+
+        function setMsg(deviceChose)
+        {
+            if (deviceChose)
+            {
+                document.getElementById("Monitoring_station_header").innerHTML = "第" + deviceList[deviceChose][0] + "组";
+                document.getElementById("Console_header").innerHTML = "第" + deviceList[deviceChose][0] + "组";
+                document.getElementById("MS_temperature_value").innerHTML = deviceList[deviceChose][2] + "&#8451";
+                document.getElementById("MS_humidity_value").innerHTML = deviceList[deviceChose][3] + "%";
+                document.getElementById("MS_PH_value").innerHTML = deviceList[deviceChose][4];
+                document.getElementById("Console_temperature_value").innerHTML = deviceList[deviceChose][2] + "&#8451";
+                document.getElementById("Console_humidity_value").innerHTML = deviceList[deviceChose][3] + "%";
+                document.getElementById("Console_PH_value").innerHTML = deviceList[deviceChose][4];
+                document.getElementById("P_temperature_value").innerHTML = deviceList[deviceChose][5];
+                document.getElementById("P_humidity_value").innerHTML = deviceList[deviceChose][6];
+                document.getElementById("P_PH_value").innerHTML = deviceList[deviceChose][7];
+            }
+            else
+            {
+                document.getElementById("Monitoring_station_header").innerHTML = "第" + deviceList[0][0] + "组";
+                document.getElementById("Console_header").innerHTML = "第" + deviceList[0][0] + "组";
+                document.getElementById("MS_temperature_value").innerHTML = deviceList[0][2] + "&#8451";
+                document.getElementById("MS_humidity_value").innerHTML = deviceList[0][3] + "%";
+                document.getElementById("MS_PH_value").innerHTML = deviceList[0][4];
+                document.getElementById("Console_temperature_value").innerHTML = deviceList[0][2] + "&#8451";
+                document.getElementById("Console_humidity_value").innerHTML = deviceList[0][3]+ "%";
+                document.getElementById("Console_PH_value").innerHTML = deviceList[0][4];
+                document.getElementById("P_temperature_value").innerHTML = deviceList[0][5];
+                document.getElementById("P_humidity_value").innerHTML = deviceList[0][6];
+                document.getElementById("P_PH_value").innerHTML = deviceList[0][7];
             }
         }
 
@@ -173,6 +223,8 @@
             var Monitoring_station_header = document.getElementById("Monitoring_station_header");
             Console_header.innerHTML = output;
             Monitoring_station_header.innerHTML = output;
+            var temp = deviceNum.split("_");
+            _deviceChose_ = Number(temp[1]);
         }
     </script>
     <style>

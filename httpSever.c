@@ -22,6 +22,7 @@ void SendDeviceData(SOCKET sock);
 void SendErrorMSG(SOCKET sock);
 void DeviceMsgProcess(char* msg);
 void ThreadMonitor(void* arg);
+//void SendMsgtoDevice(int deviceNum);
 
 typedef struct
 {
@@ -31,6 +32,9 @@ typedef struct
 	float	temperature;
 	float	humidity;
 	float	PH;
+	float	pTemperature;
+	float	pHumidity;
+	float	pPH;
 }DEVICE;
 
 typedef struct
@@ -61,12 +65,25 @@ int main(int agrc, char* agrv[])
 	memset(device, 0, sizeof(device));
 	memset(threadPool, 0, sizeof(threadPool));
 
+	device[0].isWrite = 1;
+	device[0].deviceNum = 1;
+	device[0].temperature = 22.3;
+	device[0].humidity = 19;
+	device[0].PH = 7;
+	device[0].states = 1;
+	device[0].pTemperature = 22.3;
+	device[0].pHumidity = 19;
+	device[0].pPH = 7;
+
 	device[1].isWrite = 1;
 	device[1].deviceNum = 2;
-	device[1].temperature = 22.3;
-	device[1].humidity = 19;
+	device[1].temperature = 29.7;
+	device[1].humidity = 80;
 	device[1].PH = 7;
 	device[1].states = 1;
+	device[1].pTemperature = 29.7;
+	device[1].pHumidity = 80;
+	device[1].pPH = 7;
 
 	nRes = WSAStartup(word, &WSADATA);
 	if (nRes != 0)
@@ -185,7 +202,7 @@ unsigned WINAPI RequestHandler(void* arg)
 	if (!(strcmp(method, "GET")))
 	{
 		strcpy(filename, strtok(NULL, " /"));
-		if (!(strcmp(filename, "GET_EDVICE_DATA")))
+		if (!(strcmp(filename, "GET_DEVICE_DATA")))
 		{
 			SendDeviceData(clientSock);
 			time(&now_time);
@@ -205,7 +222,7 @@ unsigned WINAPI RequestHandler(void* arg)
 	else if (!(strcmp(method, "POST")))
 	{
 		strcpy(filename, strtok(NULL, " /"));
-		if (!(strcmp(filename, "GET_EDVICE_DATA")))
+		if (!(strcmp(filename, "GET_DEVICE_DATA")))
 		{
 			SendDeviceData(clientSock);
 			return 0;
@@ -224,6 +241,7 @@ unsigned WINAPI RequestHandler(void* arg)
 		DeviceMsgProcess(deviceMsg);
 		return 0;
 	}
+
 	else
 	{
 		SendErrorMSG(clientSock);
@@ -328,7 +346,15 @@ void SendDeviceData(SOCKET sock)
 	{
 		if (device[i].isWrite == TRUE)
 		{
-			sprintf(buf, "%d&%d&%f&%f&%f\r\n", device[i].deviceNum, device[i].states, device[i].temperature, device[i].humidity, device[i].PH);
+			sprintf(buf, "%d&%d&%.1f&%.1f&%.1f&%.1f&%.1f&%.1f#\r\n", 
+				device[i].deviceNum, 
+				device[i].states, 
+				device[i].temperature, 
+				device[i].humidity, 
+				device[i].PH, 
+				device[i].pTemperature, 
+				device[i].humidity, 
+				device[i].pPH);
 			sprintf(buflength, "%x\r\n", (strlen(buf)-2));
 			send(sock, buflength, strlen(buflength), 0);
 			send(sock, buf, strlen(buf), 0);
@@ -345,6 +371,7 @@ void SendDeviceData(SOCKET sock)
 void DeviceMsgProcess(char* msg)
 {
 	int		num;
+	char	temp[BUFF_SIZE];
 	char	deviceNum[DEVICE_ATTRIBUTE_LENGTH];
 	char	states[DEVICE_ATTRIBUTE_LENGTH];
 	char	temperature[DEVICE_ATTRIBUTE_LENGTH];
@@ -364,6 +391,8 @@ void DeviceMsgProcess(char* msg)
 	device[num].humidity = atof(humidity);
 	device[num].PH = atof(PH);
 	device[num].isWrite = 1;
+
+	//SendMsgtoDevice(num);
 }
 
 void ThreadMonitor(void* arg)
@@ -381,3 +410,9 @@ void ThreadMonitor(void* arg)
 		}
 	}
 }
+
+//void SendMsgtoDevice(int deviceNum)
+//{
+//
+//
+//}
