@@ -22,12 +22,24 @@
                 HttpRequest = new ActiveXObject("Microsoft.XMLHTTP");
             }
             HttpRequest.onreadystatechange = process;
-            HttpRequest.open('GET', "http://127.0.0.1:8080/GET_DEVICE_DATA", true);
+            HttpRequest.open('GET', "http://192.168.89.180:8080/GET_DEVICE_DATA", true);
             HttpRequest.responseType = "text";
             HttpRequest.ontimeout = function (e) { console.log('ontimeout') };
             HttpRequest.onerror = function (e) { console.log('onerror') };
             HttpRequest.timeout = 1000;
             HttpRequest.send(null);
+        }
+
+        function SendMsg(data)
+        {
+            HttpRequest = new XMLHttpRequest();
+            HttpRequest.onreadystatechange = PostOver;
+            HttpRequest.open('POST', "http://192.168.89.180:8080/DEVICEMSG", true);
+            HttpRequest.responseType = "text";
+            HttpRequest.ontimeout = function (e) { console.log('ontimeout') };
+            HttpRequest.onerror = function (e) { console.log('onerror') };
+            HttpRequest.timeout = 1000;
+            HttpRequest.send(data);
         }
         function process()
         {
@@ -38,7 +50,7 @@
                 for (var i = 0; i < deviceMsg.length; i++)
                 {
                     var device = deviceMsg[i].split("&");
-                    console.log("device", device);
+                    //console.log("device", device);
                     deviceList[Number(device[0])] = device;
                     for (var j = 0; j < deviceList.length; j++)
                     {
@@ -47,12 +59,19 @@
                             deviceList[j] = deviceBlank;
                         }
                     }
-                    console.log("deviceList:",deviceList);
+                    //console.log("deviceList:",deviceList);
                 }
             }
             setMsg(_deviceChose_);
         }
 
+        function PostOver()
+        {
+            if ((HttpRequest.readyState == 4) && (HttpRequest.status == 200))
+            {
+                console.log("发生成功");
+            }
+        }
         function setMsg(deviceChose)
         {
             if (deviceChose)
@@ -60,11 +79,11 @@
                 document.getElementById("Monitoring_station_header").innerHTML = "第" + deviceList[deviceChose][0] + "组";
                 document.getElementById("Console_header").innerHTML = "第" + deviceList[deviceChose][0] + "组";
                 document.getElementById("MS_temperature_value").innerHTML = deviceList[deviceChose][2] + "&#8451";
-                document.getElementById("MS_humidity_value").innerHTML = deviceList[deviceChose][3] + "%";
-                document.getElementById("MS_PH_value").innerHTML = deviceList[deviceChose][4];
+                document.getElementById("MS_humidity_value").innerHTML = deviceList[deviceChose][3];
+                document.getElementById("MS_PH_value").innerHTML = deviceList[deviceChose][4] + "ppm";
                 document.getElementById("Console_temperature_value").innerHTML = deviceList[deviceChose][2] + "&#8451";
-                document.getElementById("Console_humidity_value").innerHTML = deviceList[deviceChose][3] + "%";
-                document.getElementById("Console_PH_value").innerHTML = deviceList[deviceChose][4];
+                document.getElementById("Console_humidity_value").innerHTML = deviceList[deviceChose][3];
+                document.getElementById("Console_PH_value").innerHTML = deviceList[deviceChose][4] + "ppm";
                 document.getElementById("P_temperature_value").innerHTML = deviceList[deviceChose][5];
                 document.getElementById("P_humidity_value").innerHTML = deviceList[deviceChose][6];
                 document.getElementById("P_PH_value").innerHTML = deviceList[deviceChose][7];
@@ -100,6 +119,10 @@
         }
 
         function plus(cardName) {
+            var outPutData;
+            var sendtemperature;
+            var sendhumidity;
+            var sendPH;
             switch (cardName) {
                 case 1:
                     {
@@ -108,7 +131,7 @@
                         var temp = initialValue.innerHTML;
                         temp = temp.slice(0, (temp.length - 1));
                         temp = Number(temp);
-                        pValue.innerHTML = (temp + 1) + "&#8451";
+                        pValue.innerHTML = (temp + 1);
                         break;
                     }
                 case 2:
@@ -118,7 +141,7 @@
                         var temp = initialValue.innerHTML;
                         temp = temp.slice(0, (temp.length - 1));
                         temp = Number(temp);
-                        pValue.innerHTML = (temp + 1) + "%";
+                        pValue.innerHTML = (temp + 1);
                         break;
                     }
                 case 3:
@@ -131,10 +154,19 @@
                         break;
                     }
             }
-
+            sendtemperature = document.getElementById("P_temperature_value").innerHTML;
+            sendhumidity = document.getElementById("P_humidity_value").innerHTML;
+            sendPH = document.getElementById("P_PH_value").innerHTML;
+            outPutData = "-1&" + _deviceChose_ + '&' + sendtemperature + '&' + sendhumidity + '&' + sendPH + '&';
+            console.log("output:", outPutData);
+            SendMsg(outPutData);
         }
 
         function sub(cardName) {
+            var outPutData;
+            var sendtemperature;
+            var sendhumidity;
+            var sendPH;
             switch (cardName) {
                 case 1:
                     {
@@ -143,7 +175,7 @@
                         var temp = initialValue.innerHTML;
                         temp = temp.slice(0, (temp.length - 1));
                         temp = Number(temp);
-                        pValue.innerHTML = (temp - 1) + "&#8451";
+                        pValue.innerHTML = (temp - 1);
                         break;
                     }
                 case 2:
@@ -154,7 +186,7 @@
                         temp = temp.slice(0, (temp.length - 1));
                         temp = Number(temp);
                         if (temp > 0) {
-                            pValue.innerHTML = (temp - 1) + "%";
+                            pValue.innerHTML = (temp - 1);
                         }
                         else {
                             alert("无法为负数");
@@ -176,38 +208,26 @@
                         break;
                     }
             }
+            sendtemperature = document.getElementById("P_temperature_value").innerHTML;
+            sendhumidity = document.getElementById("P_humidity_value").innerHTML;
+            sendPH = document.getElementById("P_PH_value").innerHTML;
+            outPutData = "-1&" + _deviceChose_ + '&' + sendtemperature + '&' + sendhumidity + '&' + sendPH + '&';
+            console.log("output:", outPutData);
+            SendMsg(outPutData);
         }
         function submit(cardName) {
+            var outPutData;
+            var sendtemperature;
+            var sendhumidity;
+            var sendPH;
+
             switch (cardName) {
                 case 1:
                     {
                         var outValue = document.getElementById("P_temperature_value");
                         var pValue = document.getElementById("temperature_input").value;
                         pValue = Number(pValue);
-                        if (pValue != pValue) {
-                            alert("错误！请不要输入中文字符");
-                            pValue = 0;
-                        }
-                        outValue.innerHTML = pValue + "&#8451";
-                        break;
-                    }
-                case 2:
-                    {
-                        var outValue = document.getElementById("P_humidity_value");
-                        var pValue = document.getElementById("humidity_input").value;
-                        pValue = Number(pValue);
-                        if (pValue != pValue) {
-                            alert("错误！请不要输入中文字符");
-                            pValue = 0;
-                        }
-                        outValue.innerHTML = pValue + "%";
-                        break;
-                    }
-                case 3:
-                    {
-                        var outValue = document.getElementById("P_PH_value");
-                        var pValue = document.getElementById("PH_input").value;
-                        pValue = Number(pValue);
+                        sendtemperature = pValue;
                         if (pValue != pValue) {
                             alert("错误！请不要输入中文字符");
                             pValue = 0;
@@ -215,7 +235,40 @@
                         outValue.innerHTML = pValue;
                         break;
                     }
+                case 2:
+                    {
+                        var outValue = document.getElementById("P_humidity_value");
+                        var pValue = document.getElementById("humidity_input").value;
+                        pValue = Number(pValue);
+                        sendhumidity = pValue;
+                        if (pValue != pValue) {
+                            alert("错误！请不要输入中文字符");
+                            pValue = 0;
+                        }
+                        outValue.innerHTML = pValue;
+                        break;
+                    }
+                case 3:
+                    {
+                        var outValue = document.getElementById("P_PH_value");
+                        var pValue = document.getElementById("PH_input").value;
+                        pValue = Number(pValue);
+                        sendPH = pValue;
+                        if (pValue != pValue)
+                        {
+                            alert("错误！请不要输入中文字符");
+                            pValue = 0;
+                        }
+                        outValue.innerHTML = pValue;
+                        break;
+                    }
             }
+            sendtemperature = document.getElementById("P_temperature_value").innerHTML;
+            sendhumidity = document.getElementById("P_humidity_value").innerHTML;
+            sendPH = document.getElementById("P_PH_value").innerHTML;
+            outPutData = "-1&" + _deviceChose_ + '&' + sendtemperature + '&' + sendhumidity + '&' + sendPH + '&';
+            console.log("output:", outPutData);
+            SendMsg(outPutData);
         }
         function deviceChose(deviceNum) {
             var output = document.getElementById(deviceNum).innerText;
@@ -406,14 +459,14 @@
                         <div id="MS_humidity_card">
                             <header><p><strong>湿度</strong></p></header>
                             <hr>
-                            <article><p id="MS_humidity_value">00.0%</p></article>
+                            <article><p id="MS_humidity_value">00.0</p></article>
                         </div>
                     </li>
                     <li id="Monitoring_station_ph" class="li">
                         <div id="MS_PH_card">
-                            <header><p><strong>土壤PH值</strong></p></header>
+                            <header><p><strong>二氧化碳浓度</strong></p></header>
                             <hr>
-                            <article><p id="MS_PH_value">0</p></article>
+                            <article><p id="MS_PH_value">0ppm</p></article>
                         </div>
                     </li>
                 </ul>
@@ -460,10 +513,10 @@
                     </li>
                     <li id="Console_PH" class="li">
                         <div id="Console_PH_card">
-                            <header><p><strong>土壤PH值调节</strong></p></header>
+                            <header><p><strong>二氧化碳浓度调节</strong></p></header>
                             <hr>
                             <article>
-                                <p id="Console_PH_value">0</p>
+                                <p id="Console_PH_value">0ppm</p>
                                 <hr>
                                 <p><strong>预设值</strong></p>
                                 <p id="P_PH_value" style="margin-bottom: 2px;">0</p>

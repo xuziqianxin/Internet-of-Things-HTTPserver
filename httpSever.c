@@ -4,6 +4,7 @@
 #include <string.h>
 #include <process.h>
 #include <time.h>
+
 #pragma warning (disable : 4996)
 #pragma comment (lib, "ws2_32.lib")
 
@@ -20,9 +21,9 @@ char* ContentType(char* file);
 void SendData(SOCKET sock, char* ct, char* filename);
 void SendDeviceData(SOCKET sock);
 void SendErrorMSG(SOCKET sock);
-void DeviceMsgProcess(char* msg);
+void DeviceMsgProcess(SOCKET sock, char* msg);
 void ThreadMonitor(void* arg);
-//void SendMsgtoDevice(int deviceNum);
+void SendMsgtoDevice(SOCKET sock ,int deviceNum);
 
 typedef struct
 {
@@ -30,11 +31,11 @@ typedef struct
 	_Bool	states;
 	_Bool	isWrite;
 	float	temperature;
-	float	humidity;
-	float	PH;
+	int		humidity;
+	int		PH;
 	float	pTemperature;
-	float	pHumidity;
-	float	pPH;
+	int		pHumidity;
+	int		pPH;
 }DEVICE;
 
 typedef struct
@@ -50,6 +51,7 @@ int main(int agrc, char* agrv[])
 {
 	char*			serverPort		 =	 "8080";
 	char*			serverIP		 =	 "127.0.0.1";
+	//char*			serverIP		 =	 "192.168.89.180";
 	WORD			word			 =	 MAKEWORD(2, 2);
 	char			rxBuff[MSG_BUFF] =	 { 0 };
 	char			txBuff[MSG_BUFF] =	 { 0 };
@@ -180,6 +182,7 @@ unsigned WINAPI RequestHandler(void* arg)
 {
 	SOCKET	clientSock = (SOCKET)arg;
 	char	buf[BUFF_SIZE];
+	char	buf_s[BUFF_SIZE];
 	char	method[BUFF_SMALL];
 	char	ct[BUFF_SMALL];
 	char	filename[BUFF_SMALL];
@@ -188,17 +191,18 @@ unsigned WINAPI RequestHandler(void* arg)
 	time_t now_time;
 
 	recv(clientSock, buf, BUFF_SIZE, 0);
+	memcpy(buf_s, buf, sizeof(buf));
 	if (strstr(buf, "HTTP/") == NULL)
 	{
 		SendErrorMSG(clientSock);
 		closesocket(clientSock);
 		return 1;
 	}
-
+	printf("开始");
 	time(&now_time);
 	printf("报文接受完毕时间:%s\n", ctime(&now_time));
-
 	strcpy(method, strtok(buf, " /"));
+	printf("%s\n", buf);
 	if (!(strcmp(method, "GET")))
 	{
 		strcpy(filename, strtok(NULL, " /"));
@@ -229,8 +233,14 @@ unsigned WINAPI RequestHandler(void* arg)
 		}
 		else
 		{
-			strcpy(ct, ContentType(filename));
-			SendData(clientSock, ct, filename);
+			strcpy(deviceMsg, strtok(buf_s, "\r\n\r\n"));
+			while (strstr(deviceMsg, "-1") == NULL)
+			{
+				strcpy(deviceMsg, strtok(NULL, "\r\n\r\n"));
+				printf("WH:%s", deviceMsg);
+			}
+			printf("deviceMsg:%s\r\n", deviceMsg);
+			DeviceMsgProcess(clientSock, deviceMsg);
 			return 0;
 		}
 	}
@@ -238,13 +248,15 @@ unsigned WINAPI RequestHandler(void* arg)
 	else if (!(strcmp(method, "DEVICEMSG")))
 	{
 		strcpy(deviceMsg, strtok(NULL, " /"));
-		DeviceMsgProcess(deviceMsg);
+		printf("deviceMsg:%s\r\n", deviceMsg);
+		DeviceMsgProcess(clientSock, deviceMsg);
 		return 0;
 	}
 
 	else
 	{
 		SendErrorMSG(clientSock);
+		closesocket(clientSock);
 	}
 	return 0;
 }
@@ -346,14 +358,14 @@ void SendDeviceData(SOCKET sock)
 	{
 		if (device[i].isWrite == TRUE)
 		{
-			sprintf(buf, "%d&%d&%.1f&%.1f&%.1f&%.1f&%.1f&%.1f#\r\n", 
+			sprintf(buf, "%d&%d&%.1f&%d&%d&%.1f&%d&%d#\r\n", 
 				device[i].deviceNum, 
 				device[i].states, 
 				device[i].temperature, 
 				device[i].humidity, 
 				device[i].PH, 
 				device[i].pTemperature, 
-				device[i].humidity, 
+				device[i].pHumidity,
 				device[i].pPH);
 			sprintf(buflength, "%x\r\n", (strlen(buf)-2));
 			send(sock, buflength, strlen(buflength), 0);
@@ -368,7 +380,7 @@ void SendDeviceData(SOCKET sock)
 	closesocket(sock);
 }
 
-void DeviceMsgProcess(char* msg)
+void DeviceMsgProcess(SOCKET sock, char* msg)
 {
 	int		num;
 	char	temp[BUFF_SIZE];
@@ -377,22 +389,51 @@ void DeviceMsgProcess(char* msg)
 	char	temperature[DEVICE_ATTRIBUTE_LENGTH];
 	char	humidity[DEVICE_ATTRIBUTE_LENGTH];
 	char	PH[DEVICE_ATTRIBUTE_LENGTH];
+	char	pTemperature[DEVICE_ATTRIBUTE_LENGTH];
+	char	pHumidity[DEVICE_ATTRIBUTE_LENGTH];
+	char	pPH[DEVICE_ATTRIBUTE_LENGTH];
 
 	strcpy(deviceNum, strtok(msg, "&"));
-	strcpy(states, strtok(NULL, "&"));
-	strcpy(temperature, strtok(NULL, "&"));
-	strcpy(humidity, strtok(NULL, "&"));
-	strcpy(PH, strtok(NULL, "&"));
+	if (-1 == atoi(deviceNum))
+	{
+		strcpy(deviceNum, strtok(NULL, "&"));
+		strcpy(pTemperature, strtok(NULL, "&"));
+		strcpy(pHumidity, strtok(NULL, "&"));
+		strcpy(pPH, strtok(NULL, "&"));
 
-	num = atoi(deviceNum);
-	device[num].deviceNum = num;
-	device[num].states = (_Bool)atoi(states);
-	device[num].temperature = atof(temperature);
-	device[num].humidity = atof(humidity);
-	device[num].PH = atof(PH);
-	device[num].isWrite = 1;
+		num = atoi(deviceNum);
+		device[num-1].pTemperature = atof(pTemperature);
+		device[num-1].pHumidity = atoi(pHumidity);
+		device[num-1].pPH = atoi(pPH);
 
-	//SendMsgtoDevice(num);
+		closesocket(sock);
+	}
+	else
+	{
+		strcpy(states, strtok(NULL, "&"));
+		strcpy(temperature, strtok(NULL, "&"));
+		strcpy(humidity, strtok(NULL, "&"));
+		strcpy(PH, strtok(NULL, "&"));
+		strcpy(pTemperature, strtok(NULL, "&"));
+		strcpy(pHumidity, strtok(NULL, "&"));
+		strcpy(pPH, strtok(NULL, "&"));
+
+		num = atoi(deviceNum);
+		device[num-1].deviceNum = num;
+		device[num-1].states = (_Bool)atoi(states);
+		device[num-1].temperature = atof(temperature);
+		device[num-1].humidity = atoi(humidity);
+		device[num-1].PH = atoi(PH);
+		if (device[num - 1].isWrite != 1)
+		{
+			device[num - 1].pTemperature = atof(pTemperature);
+			device[num - 1].pHumidity = atoi(pHumidity);
+			device[num - 1].pPH = atoi(pPH);
+			device[num - 1].isWrite = 1;
+		}
+
+		SendMsgtoDevice(sock, (num-1));
+	}
 }
 
 void ThreadMonitor(void* arg)
@@ -411,8 +452,18 @@ void ThreadMonitor(void* arg)
 	}
 }
 
-//void SendMsgtoDevice(int deviceNum)
-//{
-//
-//
-//}
+void SendMsgtoDevice(SOCKET sock, int deviceNum)
+{
+	char	buf[BUFF_SIZE];
+	sprintf(buf, "%d&%d&%.1f&%d&%d&%.1f&%d&%d#\r\n",
+		device[deviceNum].deviceNum,
+		device[deviceNum].states,
+		device[deviceNum].temperature,
+		device[deviceNum].humidity,
+		device[deviceNum].PH,
+		device[deviceNum].pTemperature,
+		device[deviceNum].pHumidity,
+		device[deviceNum].pPH);
+	send(sock, buf, strlen(buf), 0);
+	closesocket(sock);
+}
